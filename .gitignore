@@ -1,4 +1,18 @@
-venv/
+# Python
 __pycache__/
+
+
+# Virtual Environments
+venv/
+env/
+ENV/
+.venv
+.env
+
+# IDE
 .vscode/
+.idea/
+*.swp
+*.swo
+*~
 .DS_Store
