@@ -1,0 +1,15 @@
+# Core Dependencies
+opencv-python==4.8.1.78
+numpy==1.26.2
+Pillow==10.1.0
+
+# OCR
+easyocr==1.7.1
+
+# Utilities
+python-dotenv==1.0.0
+colorama==0.4.6
+
+# Development & Testing
+pytest==7.4.3
+pytest-cov==4.1.0
