@@ -1,0 +1,76 @@
+import cv2
+import numpy as np
+
+from config import get_logger
+
+logger = get_logger(__name__)
+
+class Preprocessor:
+    def __init__(self):
+        logger.debug("이미지 전처리기 초기화")
+        
+    def preprocess(self, image: np.ndarray) -> np.ndarray:
+        logger.debug("이미지 전처리 시작")
+        
+        gray = self._to_grayscale(image)
+        denoised = self._denoise(gray)
+        enhanced = self._enhance_contrast(denoised)
+        binary = self._binarize(enhanced)
+        morphed = self._morpholohy(binary)
+        
+        logger.debug("이미지 전처리 완료")
+        return morphed
+    
+    def _to_grayscale(self, image: np.ndarray) -> np.ndarray:
+        if len(image.shape) == 3:
+            return cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+        return image
+    
+    def _denoise(self, image: np.ndarray) -> np.ndarray:
+        return cv2.fastNlMeansDenoising(
+            image,
+            None,
+            h=10,
+            templateWindowSize = 7,
+            searchWindowSize = 21
+        )
+        
+    def _enhance_contrast(self, image: np.ndarray) -> np.ndarray:
+        clahe = cv2.createCLAHE(
+            clipLimit = 3.,
+            titleGridSize = (8, 8)
+        )
+        return clahe.apply(image)
+
+    def _binarize(self, image: np.ndarray) -> np.ndarray:
+        return cv2.adaptiveThreshold(
+            image,
+            255,
+            cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
+            cv2.THRESH_BINARY,
+            blockSize=11,
+            C=2
+        )
+        
+    def _morpholohy(self, image: np.ndarray) -> np.ndarray:
+        kernel = cv2.getSttructuringElement(cv2.MORPH_RECT,(3,3))
+        
+        # 구멍 메우기
+        closed = cv2.morphologyEx(
+            image,
+            cv2.MORPH_CLOSE,
+            kernel,
+            iterations = 2
+        )
+        
+        # 노이즈 제거
+        opened = cv2.morphologyEx(
+            closed,
+            cv2.MORPH_OPEN,
+            kernel,
+            iterations =1
+        )
+        
+        return opened
+        
+        
