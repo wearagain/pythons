@@ -89,14 +89,7 @@ def main():
             f.write(f"OCR 신뢰도: {result['ocr_result']['confidence']:.2%}\n")
             f.write(f"추출된 줄 수: {result['ocr_result']['line_count']}줄\n\n")
             
-            f.write("추출된 필드:\n")
-            if result['ocr_result']['fields']:
-                for field, value in result['ocr_result']['fields'].items():
-                    f.write(f"  {field}: {value}\n")
-            else:
-                f.write("  (없음)\n")
-            
-            f.write(f"\n전체 텍스트:\n")
+            f.write(f"전체 텍스트:\n")
             f.write(result['ocr_result']['text'])
         
         logger.info(f"✓ 티켓 {i} 저장 완료")
