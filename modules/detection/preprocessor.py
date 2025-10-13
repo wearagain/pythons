@@ -42,7 +42,7 @@ class Preprocessor:
     def _enhance_contrast(self, image: np.ndarray) -> np.ndarray:
         clahe = cv2.createCLAHE(
             clipLimit = 3.,
-            titleGridSize = (8, 8)
+            tileGridSize = (8, 8)
         )
         return clahe.apply(image)
 
@@ -57,7 +57,7 @@ class Preprocessor:
         )
         
     def _morpholohy(self, image: np.ndarray) -> np.ndarray:
-        kernel = cv2.getSttructuringElement(cv2.MORPH_RECT,(3,3))
+        kernel = cv2.getStructuringElement(cv2.MORPH_RECT,(3,3))
         
         # 구멍 메우기
         closed = cv2.morphologyEx(

@@ -16,6 +16,8 @@ class Settings:
     API_DIR = BASE_DIR / "api"
     CONFIG_DIR = BASE_DIR / "config"
     OUTPUT_DIR = BASE_DIR / "output"
+    DETECTED_DIR = OUTPUT_DIR / "detected"
+    LOGS_DIR = OUTPUT_DIR / "logs"
     
     DETECTOR_CONFIG: Dict[str, Any] = {
         'min_area': int(os.getenv('MIN_TICKET_AREA', 15000)),
