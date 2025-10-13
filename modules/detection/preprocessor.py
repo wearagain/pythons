@@ -1,3 +1,7 @@
+"""
+티켓 검출을 위한 이미지 전처리 파이프라인
+"""
+
 import cv2
 import numpy as np
 
