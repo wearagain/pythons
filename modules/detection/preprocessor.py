@@ -14,52 +14,44 @@ class Preprocessor:
         logger.debug("이미지 전처리기 초기화")
         
     def preprocess(self, image: np.ndarray) -> np.ndarray:
-        """엣지 기반 전처리 (메인 전략)"""
+        """엣지 기반 전처리 (기본)"""
         logger.debug("엣지 기반 전처리 시작")
         
         gray = self._to_grayscale(image)
-        
-        # 가우시안 블러로 노이즈 제거
-        blurred = cv2.GaussianBlur(gray, (5, 5), 0)
-        
-        # Canny 엣지 검출 (임계값 조정)
-        edges = cv2.Canny(blurred, 30, 100)
-        
-        # 모폴로지 연산으로 엣지 연결
-        kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (5, 5))
-        dilated = cv2.dilate(edges, kernel, iterations=3)
-        closed = cv2.morphologyEx(dilated, cv2.MORPH_CLOSE, kernel, iterations=3)
+        denoised = self._denoise(gray)
+        enhanced = self._enhance_contrast(denoised)
+        binary = self._binarize(enhanced)
+        morphed = self._morphology(binary)
         
         logger.debug("엣지 기반 전처리 완료")
-        return closed
-        
+        return morphed
+    
     def preprocess_adaptive(self, image: np.ndarray) -> np.ndarray:
+        """적응형 임계값 전처리"""
         logger.debug("이미지 전처리 시작")
         
         gray = self._to_grayscale(image)
         denoised = self._denoise(gray)
         enhanced = self._enhance_contrast(denoised)
         binary = self._binarize(enhanced)
-        morphed = self._morpholohy(binary)
+        morphed = self._morphology(binary)
         
         logger.debug("이미지 전처리 완료")
         return morphed
     
     def preprocess_otsu(self, image: np.ndarray) -> np.ndarray:
-        """Otsu 이진화 (추가 전략)"""
+        """Otsu 이진화 전처리"""
         logger.debug("Otsu 전처리 시작")
         
         gray = self._to_grayscale(image)
+        
+        # 노이즈 제거
         blurred = cv2.GaussianBlur(gray, (5, 5), 0)
         
         # Otsu 이진화
         _, binary = cv2.threshold(blurred, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
         
-        # 반전 (어두운 배경의 경우)
-        if np.mean(binary) > 127:
-            binary = cv2.bitwise_not(binary)
-        
-        # 모폴로지
+        # 형태학적 처리
         kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (3, 3))
         morphed = cv2.morphologyEx(binary, cv2.MORPH_CLOSE, kernel, iterations=2)
         
@@ -76,14 +68,14 @@ class Preprocessor:
             image,
             None,
             h=10,
-            templateWindowSize = 7,
-            searchWindowSize = 21
+            templateWindowSize=7,
+            searchWindowSize=21
         )
         
     def _enhance_contrast(self, image: np.ndarray) -> np.ndarray:
         clahe = cv2.createCLAHE(
-            clipLimit = 3.,
-            tileGridSize = (8, 8)
+            clipLimit=3.0,
+            tileGridSize=(8, 8)
         )
         return clahe.apply(image)
 
@@ -97,15 +89,15 @@ class Preprocessor:
             C=2
         )
         
-    def _morpholohy(self, image: np.ndarray) -> np.ndarray:
-        kernel = cv2.getStructuringElement(cv2.MORPH_RECT,(3,3))
+    def _morphology(self, image: np.ndarray) -> np.ndarray:
+        kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (3, 3))
         
         # 구멍 메우기
         closed = cv2.morphologyEx(
             image,
             cv2.MORPH_CLOSE,
             kernel,
-            iterations = 2
+            iterations=2
         )
         
         # 노이즈 제거
@@ -113,9 +105,7 @@ class Preprocessor:
             closed,
             cv2.MORPH_OPEN,
             kernel,
-            iterations =1
+            iterations=1
         )
         
         return opened
-        
-        
