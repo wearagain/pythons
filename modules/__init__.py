@@ -6,6 +6,7 @@ Modules 패키지
 
 from .detection import TicketDetector, Preprocessor, PrespectiveTransformer
 from .ocr import OCREngine
+from .crop import CenterCropper
 
 __all__ = [
     # Detection
@@ -15,4 +16,7 @@ __all__ = [
     
     # OCR
     'OCREngine',
+
+    # Crop
+    'CenterCroppers'
 ]

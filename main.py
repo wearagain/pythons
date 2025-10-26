@@ -7,7 +7,7 @@ import cv2
 from pathlib import Path
 
 from config import settings, get_logger, is_valid_image, save_image
-from modules import TicketDetector, OCREngine
+from modules import TicketDetector, OCREngine, CenterCropper
 
 logger = get_logger('run_local')
 
@@ -29,7 +29,48 @@ def main():
     logger.info(f"이미지 로드 완료 (크기: {image.shape[:2]})")
     
     logger.info("[1단계] 티켓 검출 중...")
+
+    cropper = CenterCropper()
+    cropped_image = cropper.crop(image)
+
+    if cropped_image is None:
+        logger.error("크롬 실패")
+        return
     
+    logger.info(f"✓ 크롭 완료\n")
+    
+    logger.info("[2단계] 결과 저장 중...")
+
+    output_filename = f"{Path(image_path).stem}_ticket.jpg"
+    output_path = settings.CROPPED_DIR / output_filename
+
+    if save_image(cropped_image, output_path):
+        logger.info(f"✓ 저장 완료")
+        logger.info(f"  - 이미지: {output_path.name}")
+        logger.info(f"  - 경로: {output_path}")
+    else:
+        logger.error("저장 실패")
+        return
+
+    logger.info("\n[3단계] 결과 표시")
+    
+    show = input("결과 이미지를 표시하시겠습니까? (y/n): ").lower()
+    
+    if show == 'y':
+        cv2.imshow("원본", image)
+        cv2.imshow("크롭된 티켓", cropped_image)
+        
+        logger.info("\n이미지 창이 표시되었습니다.")
+        logger.info("아무 키나 누르면 종료됩니다...")
+        cv2.waitKey(0)
+        cv2.destroyAllWindows()
+    
+    logger.info("✓ 처리 완료!")
+    logger.info(f"\n요약:")
+    logger.info(f"  • 저장 위치: {settings.CROPPED_DIR}/")
+    logger.info(f"  • 파일명: {output_filename}")
+    
+    """
     detector = TicketDetector()
     tickets = detector.detect(image)
     
@@ -116,6 +157,9 @@ def main():
     logger.info(f"\n 요약:")
     logger.info(f"  • 검출된 티켓: {len(tickets)}개")
     logger.info(f"  • 저장 위치: {settings.DETECTED_DIR}/")
+    """
+
+
 
 
 
