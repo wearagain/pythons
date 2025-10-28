@@ -1,20 +1,44 @@
 # Python
 __pycache__/
-
-
-# Virtual Environments
-venv/
+*.py[cod]
+*$py.class
+*.so
+.Python
 env/
-ENV/
-.venv
+venv/
+*.egg-info/
+dist/
+build/
+
+# 환경 변수
 .env
+
+# 출력 파일
+output/
+!output/.gitkeep
+output/detected/*
+output/logs/*
+!output/detected/.gitkeep
+!output/logs/.gitkeep
+
+# 테스트 이미지
+tests/test_images/*.jpg
+tests/test_images/*.png
+!tests/test_images/.gitkeep
 
 # IDE
 .vscode/
 .idea/
 *.swp
-*.swo
-*~
 .DS_Store
 
-test.*
+# EasyOCR 모델 캐시
+.EasyOCR/
+
+# Pytest
+.pytest_cache/
+.coverage
+htmlcov/
+
+#test 폴더
+test/*

@@ -16,12 +16,20 @@ class Settings:
     API_DIR = BASE_DIR / "api"
     CONFIG_DIR = BASE_DIR / "config"
     OUTPUT_DIR = BASE_DIR / "output"
+    CROPPED_DIR = BASE_DIR / "cropped"
+    DETECTED_DIR = OUTPUT_DIR / "detected"
+    LOGS_DIR = OUTPUT_DIR / "logs"
+
+    CROPPER_CONFIG: Dict[str, Any] = {
+        'crop_ratio': float(os.getenv('CROP_RATIO', 0.85)),
+        'ticket_aspect_ratio': float(os.getenv('TICKET_ASPECT_RATIO', 1.5)),
+    }
     
     DETECTOR_CONFIG: Dict[str, Any] = {
-        'min_area': int(os.getenv('MIN_TICKET_AREA', 15000)),
-        'max_area': int(os.getenv('MAX_TICKET_AREA', 1500000)),
-        'aspect_ratio_min': float(os.getenv('ASPECT_RATIO_MIN', 0.4)),
-        'aspect_ratio_max': float(os.getenv('ASPECT_RATIO_MAX', 0.9)),
+        'min_area': int(os.getenv('MIN_TICKET_AREA', 50000)),
+        'max_area': int(os.getenv('MAX_TICKET_AREA', 5000000)),
+        'aspect_ratio_min': float(os.getenv('ASPECT_RATIO_MIN', 0.2)),
+        'aspect_ratio_max': float(os.getenv('ASPECT_RATIO_MAX', 5.0)),
         'approx_epsilon': 0.02,        
         'margin': 10,                  
     }
