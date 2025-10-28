@@ -3,6 +3,9 @@
 
 채팅 히스토리와 세션을 관리합니다.
 """
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from typing import List, Dict, Optional
 from datetime import datetime
