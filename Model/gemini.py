@@ -24,7 +24,7 @@ class GeminiClient:
         self, 
         api_key: Optional[str] = None, 
         use_rag: bool = False,
-        embedding_model: str = "Qwen/Qwen3-Embedding-0.6B"
+        embedding_model: str = "intfloat/multilingual-e5-base"
     ):
         """
         Args:

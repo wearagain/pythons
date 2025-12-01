@@ -42,3 +42,6 @@ htmlcov/
 
 #test 폴더
 test/*
+cropped/*
+
+data/papers/*
