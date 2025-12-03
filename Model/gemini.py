@@ -1,17 +1,27 @@
 """
-Gemini API 클라이언트 (RAG 지원 + Qwen3-0.6B Embedding)
+Gemini API 클라이언트 (RAG 지원 + multilingual-e5-base Embedding)
 """
 import sys
-from pathlib import Path
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-
 import os
+from pathlib import Path
 from typing import Optional, List, Dict, Any
+
+# LangChain 관련 imports
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_chroma import Chroma
 from langchain_huggingface import HuggingFaceEmbeddings
-from pathlib import Path
+from langchain.chains import create_retrieval_chain
+from langchain.chains.combine_documents import create_stuff_documents_chain
+from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.messages import HumanMessage, SystemMessage
+from langchain_core.documents import Document
+from langchain_community.document_loaders import PyPDFLoader
+from langchain_text_splitters import RecursiveCharacterTextSplitter
 
+# 프로젝트 루트를 sys.path에 추가
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
+# 프로젝트 내부 imports
 from config import settings, get_logger
 
 logger = get_logger(__name__)
@@ -52,7 +62,7 @@ class GeminiClient:
             'max_output_tokens': settings.LLM_CONFIG.get('max_output_tokens', 2048),
         }
         
-        # LangChain LLM 초기화 (통합!)
+        # LangChain LLM 초기화
         self.llm = ChatGoogleGenerativeAI(
             model=self.model_name,
             google_api_key=self.api_key,
@@ -82,7 +92,7 @@ class GeminiClient:
             persist_directory = settings.OUTPUT_DIR / "vector_db"
             persist_directory.mkdir(parents=True, exist_ok=True)
             
-            logger.info(f"Qwen3-0.6B Embedding 모델 로드 중: {self.embedding_model_name}")
+            logger.info(f"Embedding 모델 로드 중: {self.embedding_model_name}")
             
             self.embeddings = HuggingFaceEmbeddings(
                 model_name=self.embedding_model_name,
@@ -120,11 +130,6 @@ class GeminiClient:
             # RAG 체인 생성
             doc_count = len(self.vector_db.get()['ids'])
             if doc_count > 0:
-                from langchain.chains import create_retrieval_chain
-                from langchain.chains.combine_documents import create_stuff_documents_chain
-                from langchain_core.prompts import ChatPromptTemplate
-                
-                # 프롬프트 템플릿
                 system_prompt = (
                     "당신은 문서 기반 질문답변 AI입니다. "
                     "아래 제공된 문서를 참고하여 정확하게 답변하세요.\n\n"
@@ -135,7 +140,6 @@ class GeminiClient:
                     ("human", "{input}")
                 ])
                 
-                # RAG 체인 생성
                 retriever = self.vector_db.as_retriever(
                     search_type="similarity",
                     search_kwargs={"k": 3}
@@ -159,37 +163,21 @@ class GeminiClient:
         chat_history: Optional[List[Dict[str, str]]] = None,
         system_prompt: Optional[str] = None
     ) -> str:
-        """
-        채팅 메시지 전송 (RAG 자동 활성화)
-        
-        Args:
-            message: 사용자 메시지
-            chat_history: 이전 대화 히스토리 (사용 안 함)
-            system_prompt: 시스템 프롬프트
-            
-        Returns:
-            AI 응답 텍스트
-        """
-        # RAG 사용
+        """채팅 메시지 전송 (RAG 자동 활성화)"""
         if self.use_rag and self.qa_chain:
             try:
                 result = self.qa_chain.invoke({"input": message})
                 response = result["answer"]
                 
-                # 출처 문서 로깅
                 if "context" in result:
-                    logger.info(f"RAG 응답 (Qwen3-0.6B Embedding)")
+                    logger.info("RAG 응답 생성")
                 
                 logger.info(f"응답 생성 완료 (길이: {len(response)}자)")
                 return response
             except Exception as e:
                 logger.error(f"RAG 호출 실패: {e}")
-                # 폴백
         
-        # 일반 LLM (LangChain 사용!)
         try:
-            from langchain_core.messages import HumanMessage, SystemMessage
-            
             messages = []
             if system_prompt:
                 messages.append(SystemMessage(content=system_prompt))
@@ -204,23 +192,13 @@ class GeminiClient:
             logger.error(f"LLM 호출 실패: {e}")
             raise
     
-    def generate(
-        self, 
-        prompt: str,
-        system_prompt: Optional[str] = None
-    ) -> str:
+    def generate(self, prompt: str, system_prompt: Optional[str] = None) -> str:
         """단일 프롬프트 생성"""
         return self.chat(prompt, system_prompt=system_prompt)
     
-    def stream_chat(
-        self,
-        message: str,
-        system_prompt: Optional[str] = None
-    ):
-        """스트리밍 채팅 (LangChain)"""
+    def stream_chat(self, message: str, system_prompt: Optional[str] = None):
+        """스트리밍 채팅"""
         try:
-            from langchain_core.messages import HumanMessage, SystemMessage
-            
             messages = []
             if system_prompt:
                 messages.append(SystemMessage(content=system_prompt))
@@ -236,21 +214,13 @@ class GeminiClient:
             logger.error(f"스트리밍 실패: {e}")
             raise
     
-    def add_documents_from_pdf(
-        self, 
-        pdf_path: str, 
-        chunk_size: int = 1000, 
-        chunk_overlap: int = 200
-    ):
+    def add_documents_from_pdf(self, pdf_path: str, chunk_size: int = 1000, chunk_overlap: int = 200):
         """PDF 문서를 벡터DB에 추가"""
         if not self.use_rag:
             logger.warning("RAG가 비활성화되어 있습니다.")
             return
         
         try:
-            from langchain_community.document_loaders import PyPDFLoader
-            from langchain_text_splitters import RecursiveCharacterTextSplitter
-            
             logger.info(f"PDF 로드 중: {pdf_path}")
             loader = PyPDFLoader(pdf_path)
             documents = loader.load()
@@ -262,10 +232,9 @@ class GeminiClient:
             )
             splits = text_splitter.split_documents(documents)
             
-            logger.info(f"Qwen3-0.6B Embedding으로 벡터화 중 ({len(splits)}개 청크)...")
+            logger.info(f"벡터화 중 ({len(splits)}개 청크)...")
             self.vector_db.add_documents(splits)
             
-            # RAG 체인 재초기화
             if not self.qa_chain:
                 self._init_rag()
             
@@ -276,25 +245,19 @@ class GeminiClient:
             logger.error(f"문서 추가 실패: {e}")
             raise
     
-    def add_documents_from_text(
-        self, 
-        texts: List[str], 
-        metadatas: Optional[List[Dict]] = None
-    ):
+    def add_documents_from_text(self, texts: List[str], metadatas: Optional[List[Dict]] = None):
         """텍스트를 벡터DB에 직접 추가"""
         if not self.use_rag:
             logger.warning("RAG가 비활성화되어 있습니다.")
             return
         
         try:
-            from langchain_core.documents import Document
-            
             documents = [
                 Document(page_content=text, metadata=meta or {})
                 for text, meta in zip(texts, metadatas or [{}] * len(texts))
             ]
             
-            logger.info(f"Qwen3-0.6B Embedding으로 벡터화 중 ({len(documents)}개 문서)...")
+            logger.info(f"벡터화 중 ({len(documents)}개 문서)...")
             self.vector_db.add_documents(documents)
             
             if not self.qa_chain:
