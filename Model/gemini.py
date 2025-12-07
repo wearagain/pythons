@@ -1,12 +1,8 @@
-"""
-Gemini API 클라이언트 (RAG 지원 + multilingual-e5-base Embedding)
-"""
 import sys
 import os
 from pathlib import Path
 from typing import Optional, List, Dict, Any
 
-# LangChain 관련 imports
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_chroma import Chroma
 from langchain_huggingface import HuggingFaceEmbeddings
@@ -18,10 +14,8 @@ from langchain_core.documents import Document
 from langchain_community.document_loaders import PyPDFLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 
-# 프로젝트 루트를 sys.path에 추가
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-# 프로젝트 내부 imports
 from config import settings, get_logger
 
 logger = get_logger(__name__)
@@ -34,7 +28,7 @@ class GeminiClient:
         self, 
         api_key: Optional[str] = None, 
         use_rag: bool = False,
-        embedding_model: str = "intfloat/multilingual-e5-base"
+        embedding_model: str = "jhgan/ko-sroberta-nli"
     ):
         """
         Args:
@@ -54,20 +48,30 @@ class GeminiClient:
         # 모델 설정
         self.model_name = settings.LLM_CONFIG.get('model', 'gemini-2.0-flash')
         
+        # 🔥 use_rag에 따라 다른 설정
+        if use_rag:
+            # RAG용: 정확한 데이터 추출
+            temperature = 0.0
+            top_k = 10
+            logger.info("RAG 모드: temperature=0.0, top_k=10")
+        else:
+            # 챗봇용: 자연스러운 대화
+            temperature = settings.LLM_CONFIG.get('temperature', 0.7)
+            top_k = settings.LLM_CONFIG.get('top_k', 40)
+            logger.info(f"일반 모드: temperature={temperature}, top_k={top_k}")
+        
         # Generation 설정
         self.generation_config = {
-            'temperature': settings.LLM_CONFIG.get('temperature', 0.7),
+            'temperature': temperature,
             'top_p': settings.LLM_CONFIG.get('top_p', 0.95),
-            'top_k': settings.LLM_CONFIG.get('top_k', 40),
-            'max_output_tokens': settings.LLM_CONFIG.get('max_output_tokens', 2048),
+            'top_k': top_k
         }
         
         # LangChain LLM 초기화
         self.llm = ChatGoogleGenerativeAI(
             model=self.model_name,
             google_api_key=self.api_key,
-            temperature=self.generation_config['temperature'],
-            max_output_tokens=self.generation_config['max_output_tokens']
+            temperature=self.generation_config['temperature']
         )
         
         # RAG 설정
@@ -142,7 +146,7 @@ class GeminiClient:
                 
                 retriever = self.vector_db.as_retriever(
                     search_type="similarity",
-                    search_kwargs={"k": 3}
+                    search_kwargs={"k": 10}
                 )
                 
                 question_answer_chain = create_stuff_documents_chain(self.llm, prompt)

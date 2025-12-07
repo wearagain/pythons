@@ -1,15 +1,17 @@
-
+# Model/impact_rag.py
+"""
+환경 임팩트 RAG 시스템 (파싱 개선)
+"""
 import sys
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 import pdfplumber
 import re
+import json
 from typing import List, Dict
 from langchain_core.documents import Document
 from langchain_text_splitters import RecursiveCharacterTextSplitter
-from langchain_core.output_parsers import JsonOutputParser
-from langchain_core.prompts import ChatPromptTemplate
 
 from Model.gemini import GeminiClient
 from config import get_logger
@@ -33,9 +35,6 @@ class ImpactRAGImproved:
         
         if self.rag_enabled:
             self._load_papers()
-        
-        # JsonOutputParser 초기화
-        self.parser = JsonOutputParser()
         
         logger.info("✓ RAG 초기화 완료")
     
@@ -95,8 +94,8 @@ class ImpactRAGImproved:
         # 청크 분할
         if documents:
             splitter = RecursiveCharacterTextSplitter(
-                chunk_size=500,
-                chunk_overlap=50
+                chunk_size=1000,
+                chunk_overlap=200
             )
             documents = splitter.split_documents(documents)
         
@@ -159,28 +158,11 @@ class ImpactRAGImproved:
             )
             
             logger.info("  - LLM 응답 받음")
+            logger.info(f"  - 응답 길이: {len(response)}자")
             logger.info("  - JSON 파싱 중...")
             
-            # JsonOutputParser로 파싱
-            # Markdown 제거
-            response_clean = response.strip()
-            if response_clean.startswith("```"):
-                lines = response_clean.split("\n")
-                response_clean = "\n".join(lines[1:-1]) if len(lines) > 2 else response_clean
-                if response_clean.startswith("json"):
-                    response_clean = response_clean[4:]
-            
-            # JSON 파싱
-            import json
-            data = json.loads(response_clean.strip())
-            
-            # categories 배열 추출
-            if isinstance(data, dict) and "categories" in data:
-                categories = data["categories"]
-            elif isinstance(data, list):
-                categories = data
-            else:
-                raise ValueError("예상치 못한 JSON 구조")
+            # 🔥 개선된 JSON 파싱
+            categories = self._parse_json_response(response)
             
             logger.info(f"  ✓ 파싱 완료: {len(categories)}개")
             
@@ -190,6 +172,85 @@ class ImpactRAGImproved:
             logger.error(f"  ✗ LLM 호출 또는 파싱 실패: {e}")
             logger.error(f"  응답 내용: {response[:500] if 'response' in locals() else '없음'}")
             raise
+    
+    def _parse_json_response(self, response: str) -> List[Dict]:
+        """
+        JSON 응답 파싱 (개선된 버전)
+        
+        여러 방법으로 시도:
+        1. Markdown 제거
+        2. 정규식으로 JSON 추출
+        3. 불완전한 JSON 처리
+        """
+        # 방법 1: Markdown 제거
+        try:
+            response_clean = response.strip()
+            
+            # ```json ... ``` 제거
+            if response_clean.startswith("```"):
+                # 첫 번째 ``` 이후부터
+                response_clean = response_clean.split("```", 1)[1]
+                # json 키워드 제거
+                if response_clean.startswith("json"):
+                    response_clean = response_clean[4:]
+                # 마지막 ``` 제거
+                if "```" in response_clean:
+                    response_clean = response_clean.split("```")[0]
+            
+            # 공백 제거
+            response_clean = response_clean.strip()
+            
+            # JSON 파싱
+            data = json.loads(response_clean)
+            
+            # categories 배열 추출
+            if isinstance(data, dict) and "categories" in data:
+                return data["categories"]
+            elif isinstance(data, list):
+                return data
+            else:
+                raise ValueError("예상치 못한 JSON 구조")
+        
+        except json.JSONDecodeError as e:
+            logger.warning(f"방법 1 실패: {e}")
+            
+            # 방법 2: 정규식으로 JSON 추출
+            try:
+                # { "categories": [ ... ] } 패턴 찾기
+                match = re.search(r'\{\s*"categories"\s*:\s*\[.*\]\s*\}', response, re.DOTALL)
+                if match:
+                    json_str = match.group(0)
+                    data = json.loads(json_str)
+                    return data["categories"]
+                else:
+                    raise ValueError("JSON 패턴을 찾을 수 없음")
+            
+            except Exception as e2:
+                logger.warning(f"방법 2 실패: {e2}")
+                
+                # 방법 3: 불완전한 JSON 처리 (마지막 객체 제거 후 재시도)
+                try:
+                    # 마지막 , 이후 내용 제거
+                    response_clean = response_clean.strip()
+                    if response_clean.endswith(","):
+                        response_clean = response_clean[:-1]
+                    
+                    # 불완전한 마지막 객체 제거
+                    # [ {...}, {...}, { 여기서 끊김
+                    last_complete = response_clean.rfind("},")
+                    if last_complete > 0:
+                        response_clean = response_clean[:last_complete+1] + "]}"
+                    
+                    data = json.loads(response_clean)
+                    
+                    if isinstance(data, dict) and "categories" in data:
+                        logger.warning(f"방법 3 성공 (일부 데이터 손실 가능)")
+                        return data["categories"]
+                
+                except Exception as e3:
+                    logger.error(f"방법 3 실패: {e3}")
+                    logger.error(f"전체 응답:\n{response}")
+                    raise ValueError("모든 파싱 방법 실패")
     
     def _create_batch_prompt(self) -> str:
         """전체 카테고리 생성 프롬프트"""
@@ -230,7 +291,7 @@ class ImpactRAGImproved:
 3. 평균 무게 × 1kg당 절감량 = 1개당 절감량
 4. 정확한 수치로 계산
 
-**출력 형식 (JSON만):**
+**출력 형식 (JSON만, 39개 전부):**
 {{
   "categories": [
     {{
@@ -249,9 +310,13 @@ class ImpactRAGImproved:
       "water_m3": 3.10,
       "energy_mj": 285.4
     }}
-    ... (총 39개)
+    ... (39개 전부 작성)
   ]
 }}
 
-**주의: JSON 형식으로만 출력하세요. 다른 설명은 하지 마세요.**
+**중요:**
+- JSON 형식으로만 출력
+- 39개 전부 작성
+- 다른 설명 없이
+- 마지막 항목에는 쉼표(,) 없음
 """.strip()

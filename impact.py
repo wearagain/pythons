@@ -23,12 +23,10 @@ logger = get_logger(__name__)
 
 
 def generate_all_impacts():
-    logger.info("="*70)
     logger.info("가치입다 - 환경 임팩트 데이터 생성")
-    logger.info("="*70)
     
     # RAG 초기화
-    logger.info("\n[1단계] RAG 시스템 초기화...")
+    logger.info("[1단계] RAG 시스템 초기화...")
     rag = ImpactRAGImproved()
     
     if not rag.rag_enabled:
@@ -36,8 +34,6 @@ def generate_all_impacts():
         return None
     
     logger.info("✓ RAG 준비 완료")
-    
-    # 🔥 1회 LLM 호출로 전체 39개 생성
     logger.info("\n[2단계] LLM 1회 호출로 전체 카테고리 생성...")
     
     try:

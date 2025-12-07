@@ -22,10 +22,7 @@ class Settings:
 
     LLM_CONFIG: Dict[str, Any] = {
     'model': os.getenv('GEMINI_MODEL', 'gemini-2.0-flash'),
-    'temperature': float(os.getenv('TEMPERATURE', '0.7')),
     'top_p': float(os.getenv('TOP_P', '0.95')),
-    'top_k': int(os.getenv('TOP_K', '40')),
-    'max_output_tokens': int(os.getenv('MAX_OUTPUT_TOKENS', '2048')),
     'use_gpu': os.getenv('USE_GPU', 'False').lower() == 'true',
 }
 
