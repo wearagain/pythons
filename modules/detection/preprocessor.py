@@ -14,7 +14,7 @@ class Preprocessor:
         logger.debug("이미지 전처리기 초기화")
         
     def preprocess(self, image: np.ndarray) -> np.ndarray:
-        """엣지 기반 전처리 (기본)"""
+        """엣지 기반 전처리"""
         logger.debug("엣지 기반 전처리 시작")
         
         gray = self._to_grayscale(image)

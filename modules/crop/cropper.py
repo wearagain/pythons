@@ -21,11 +21,11 @@ class CenterCropper:
         self.white_threshold = self.config.get('white_threshold', 200)
         
         # 최소/최대 윤곽선 면적 (이미지 대비 비율)
-        self.min_area_ratio = self.config.get('min_area_ratio', 0.1)  # 10%로 낮춤
+        self.min_area_ratio = self.config.get('min_area_ratio', 0.1) 
         self.max_area_ratio = self.config.get('max_area_ratio', 0.95)
         
         # 윤곽선 근사화 엡실론 (값이 클수록 단순화)
-        self.approx_epsilon = self.config.get('approx_epsilon', 0.05)  # 0.02 → 0.05
+        self.approx_epsilon = self.config.get('approx_epsilon', 0.05)  
         
         logger.info(
             f"중앙 크롭퍼 초기화 완료 "
@@ -35,12 +35,6 @@ class CenterCropper:
     def crop(self, image: Union[np.ndarray, str, Path]) -> Optional[np.ndarray]:
         """
         흰색 가이드 틀 내부 영역을 크롭
-        
-        Args:
-            image: 입력 이미지 (numpy array 또는 파일 경로)
-            
-        Returns:
-            크롭된 이미지 (numpy array) 또는 None
         """
         # 이미지 로드
         if isinstance(image, (str, Path)):
@@ -54,10 +48,10 @@ class CenterCropper:
         
         logger.info(f"이미지 크롭 시작 (원본 크기: {width}x{height})")
         
-        # 1단계: 전처리
+        # 전처리
         preprocessed = self._preprocess(original)
         
-        # 2단계: 흰색 테두리 검출
+        # 흰색 테두리 검출
         white_frame = self._detect_white_frame(preprocessed, width, height)
         
         if white_frame is None:
@@ -65,7 +59,7 @@ class CenterCropper:
             # 가이드 틀이 없으면 중앙 영역을 크롭
             return self._crop_center_fallback(original)
         
-        # 3단계: 틀 내부 영역 추출
+        # 틀 내부 영역 추출
         cropped = self._extract_inner_area(original, white_frame)
         
         crop_h, crop_w = cropped.shape[:2]
@@ -81,7 +75,7 @@ class CenterCropper:
         else:
             gray = image
         
-        # 노이즈 제거 (블러)
+        # 노이즈 제거
         blurred = cv2.GaussianBlur(gray, (5, 5), 0)
         
         return blurred
@@ -89,14 +83,11 @@ class CenterCropper:
     def _detect_white_frame(self, gray: np.ndarray, width: int, height: int) -> Optional[np.ndarray]:
         """
         흰색 가이드 틀(테두리) 검출
-        
-        Returns:
-            윤곽선 좌표 (4개 점) 또는 None
         """
         # 흰색 영역 추출
         _, white_mask = cv2.threshold(gray, self.white_threshold, 255, cv2.THRESH_BINARY)
         
-        # 모폴로지 연산 (구멍 메우기, 노이즈 제거)
+        # 모폴로지 연산 
         kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (5, 5))
         white_mask = cv2.morphologyEx(white_mask, cv2.MORPH_CLOSE, kernel, iterations=3)
         white_mask = cv2.morphologyEx(white_mask, cv2.MORPH_OPEN, kernel, iterations=2)
@@ -127,13 +118,12 @@ class CenterCropper:
                 if 4 <= len(approx) <= 6:  # 4~6개 꼭짓점 허용
                     # 4개로 강제 근사화
                     if len(approx) != 4:
-                        # 더 강하게 근사화
                         approx = cv2.approxPolyDP(contour, 0.1 * peri, True)
                         logger.debug(f"  → 강제 근사화: {len(approx)}개 꼭짓점")
                     
                     if len(approx) == 4:
                         valid_contours.append((area, approx))
-                        logger.debug(f"  ✓ 유효한 사각형!")
+                        logger.debug(f" 유효한 사각형!")
         
         if not valid_contours:
             logger.warning("사각형 윤곽선을 찾을 수 없습니다")
@@ -150,13 +140,6 @@ class CenterCropper:
     def _extract_inner_area(self, image: np.ndarray, frame: np.ndarray) -> np.ndarray:
         """
         가이드 틀 내부 영역만 추출
-        
-        Args:
-            image: 원본 이미지
-            frame: 4개 꼭짓점 좌표
-            
-        Returns:
-            크롭된 이미지
         """
         # 꼭짓점 정렬 (좌상, 우상, 우하, 좌하 순서)
         pts = frame.reshape(4, 2).astype(np.float32)

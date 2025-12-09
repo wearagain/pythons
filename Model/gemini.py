@@ -22,7 +22,7 @@ logger = get_logger(__name__)
 
 
 class GeminiClient:
-    """Gemini API 클라이언트 (LangChain 통합)"""
+    """Gemini API 클라이언트"""
     
     def __init__(
         self, 
@@ -48,14 +48,14 @@ class GeminiClient:
         # 모델 설정
         self.model_name = settings.LLM_CONFIG.get('model', 'gemini-2.0-flash')
         
-        # 🔥 use_rag에 따라 다른 설정
+        
         if use_rag:
-            # RAG용: 정확한 데이터 추출
+            # RAG용
             temperature = 0.0
             top_k = 10
             logger.info("RAG 모드: temperature=0.0, top_k=10")
         else:
-            # 챗봇용: 자연스러운 대화
+            # 챗봇용
             temperature = settings.LLM_CONFIG.get('temperature', 0.7)
             top_k = settings.LLM_CONFIG.get('top_k', 40)
             logger.info(f"일반 모드: temperature={temperature}, top_k={top_k}")
@@ -109,7 +109,7 @@ class GeminiClient:
                 }
             )
             
-            logger.info("✓ Embedding 모델 로드 완료")
+            logger.info("Embedding 모델 로드 완료")
             
             try:
                 self.vector_db = Chroma(
@@ -119,9 +119,9 @@ class GeminiClient:
                 doc_count = len(self.vector_db.get()['ids'])
                 
                 if doc_count > 0:
-                    logger.info(f"✓ 벡터DB 로드 완료 (문서 수: {doc_count})")
+                    logger.info(f"벡터DB 로드 완료 (문서 수: {doc_count})")
                 else:
-                    logger.info("✓ 빈 벡터DB 생성 완료")
+                    logger.info("빈 벡터DB 생성 완료")
                     
             except Exception as e:
                 logger.info(f"새 벡터DB 생성 중... ({e})")
@@ -129,7 +129,7 @@ class GeminiClient:
                     persist_directory=str(persist_directory),
                     embedding_function=self.embeddings
                 )
-                logger.info("✓ 새 벡터DB 생성 완료")
+                logger.info("새 벡터DB 생성 완료")
             
             # RAG 체인 생성
             doc_count = len(self.vector_db.get()['ids'])
@@ -152,7 +152,7 @@ class GeminiClient:
                 question_answer_chain = create_stuff_documents_chain(self.llm, prompt)
                 self.qa_chain = create_retrieval_chain(retriever, question_answer_chain)
                 
-                logger.info("✓ RAG 체인 생성 완료 (문서 검색 활성화)")
+                logger.info("RAG 체인 생성 완료 (문서 검색 활성화)")
             else:
                 logger.info("벡터DB가 비어있음 - 일반 LLM 모드로 작동")
             

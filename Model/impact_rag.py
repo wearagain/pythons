@@ -1,6 +1,5 @@
-# Model/impact_rag.py
 """
-환경 임팩트 RAG 시스템 (파싱 개선)
+환경 임팩트 RAG 시스템
 """
 import sys
 from pathlib import Path
@@ -36,7 +35,7 @@ class ImpactRAGImproved:
         if self.rag_enabled:
             self._load_papers()
         
-        logger.info("✓ RAG 초기화 완료")
+        logger.info("RAG 초기화 완료")
     
     def _load_papers(self):
         """논문 PDF 로드"""
@@ -60,9 +59,9 @@ class ImpactRAGImproved:
                 documents = self._extract_pdf(str(pdf_path))
                 if documents:
                     self.client.vector_db.add_documents(documents)
-                    logger.info(f"  ✓ {len(documents)}개 청크 추가")
+                    logger.info(f"  {len(documents)}개 청크 추가")
             except Exception as e:
-                logger.error(f"  ✗ 실패: {e}")
+                logger.error(f"실패: {e}")
     
     def _extract_pdf(self, pdf_path: str) -> List[Document]:
         """PDF 추출 (표 + 캡션)"""
@@ -139,7 +138,7 @@ class ImpactRAGImproved:
     
     def generate_all_categories(self) -> List[Dict]:
         """
-        🔥 1회 LLM 호출로 전체 39개 카테고리 생성
+        1회 LLM 호출로 전체 39개 카테고리 생성
         
         Returns:
             카테고리 리스트
@@ -151,7 +150,6 @@ class ImpactRAGImproved:
         logger.info("  - LLM 호출 중... (약 1-2분 소요)")
         
         try:
-            # 🔥 LLM 1회 호출
             response = self.client.chat(
                 message=prompt,
                 system_prompt="당신은 환경 임팩트 전문가입니다. 논문 데이터 기반으로 정확한 수치를 제공하세요."
@@ -161,26 +159,20 @@ class ImpactRAGImproved:
             logger.info(f"  - 응답 길이: {len(response)}자")
             logger.info("  - JSON 파싱 중...")
             
-            # 🔥 개선된 JSON 파싱
             categories = self._parse_json_response(response)
             
-            logger.info(f"  ✓ 파싱 완료: {len(categories)}개")
+            logger.info(f"  파싱 완료: {len(categories)}개")
             
             return categories
         
         except Exception as e:
-            logger.error(f"  ✗ LLM 호출 또는 파싱 실패: {e}")
+            logger.error(f"  LLM 호출 또는 파싱 실패: {e}")
             logger.error(f"  응답 내용: {response[:500] if 'response' in locals() else '없음'}")
             raise
     
     def _parse_json_response(self, response: str) -> List[Dict]:
         """
-        JSON 응답 파싱 (개선된 버전)
-        
-        여러 방법으로 시도:
-        1. Markdown 제거
-        2. 정규식으로 JSON 추출
-        3. 불완전한 JSON 처리
+        JSON 응답 파싱
         """
         # 방법 1: Markdown 제거
         try:

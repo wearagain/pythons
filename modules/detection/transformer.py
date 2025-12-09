@@ -1,5 +1,5 @@
 """
-기울어진 티켓 카드를 정면으로 펴기 - 최종 완전판
+기울어진 티켓 카드를 정면으로 펴기
 """
 
 import cv2
@@ -60,7 +60,7 @@ class PrespectiveTransformer:
         강력한 점 정렬 알고리즘
         여러 방법을 시도하여 가장 안정적인 결과 반환
         """
-        # 방법 1: 무게중심 기반
+        # 1. 무게중심 기반
         try:
             result = self._order_by_centroid(pts)
             if self._validate_rect(result):
@@ -69,7 +69,7 @@ class PrespectiveTransformer:
         except Exception as e:
             logger.debug(f"무게중심 방법 실패: {e}")
         
-        # 방법 2: 합/차 기반 (기존 방법)
+        # 2. 합/차 기반
         try:
             result = self._order_by_sum_diff(pts)
             if self._validate_rect(result):
@@ -78,7 +78,7 @@ class PrespectiveTransformer:
         except Exception as e:
             logger.debug(f"합/차 방법 실패: {e}")
         
-        # 방법 3: 각도 기반
+        # 3. 각도 기반
         try:
             result = self._order_by_angle(pts)
             if self._validate_rect(result):

@@ -1,5 +1,5 @@
 """
-태그 인식 성능 평가 스크립트 (이미지 저장 버전)
+태그 인식 성능 평가 스크립트
 
 크롭된 결과를 실제로 저장해서 육안으로 확인 가능
 """
@@ -54,7 +54,7 @@ class VisualEvaluator:
         original_h, original_w = image.shape[:2]
         original_size = (original_w, original_h)
         
-        # 로그 캡처 (폴백 및 WARNING 감지용)
+        # 로그 캡처
         import logging
         import io
         
@@ -73,7 +73,7 @@ class VisualEvaluator:
         cropper_logger.removeHandler(handler)
         log_output = log_capture.getvalue()
         
-        # 폴백 사용 여부 확인 (WARNING 로그로 감지)
+        # 폴백 사용 여부 확인
         has_warning = len(log_output.strip()) > 0
         used_fallback = (
             "폴백" in log_output or 
@@ -91,22 +91,22 @@ class VisualEvaluator:
             cropped_pixels = crop_w * crop_h
             size_reduction = (1 - cropped_pixels / original_pixels) * 100
             
-            # 📸 크롭된 이미지 저장
+            # 크롭된 이미지 저장
             if self.save_cropped:
                 output_filename = f"{Path(image_path).stem}_cropped.jpg"
                 output_path = self.eval_output_dir / output_filename
                 save_image(cropped, output_path)
-                logger.info(f"  💾 크롭 이미지 저장: {output_filename}")
+                logger.info(f"크롭 이미지 저장: {output_filename}")
             
             # 검출 품질 판단
             if used_fallback:
                 detection_quality = 'fallback'
                 success_type = 'partial'
-                logger.warning(f"⚠️  주의 (폴백 사용) - {processing_time:.3f}초, 크기 감소 {size_reduction:.1f}%")
+                logger.warning(f"주의 (폴백 사용) - {processing_time:.3f}초, 크기 감소 {size_reduction:.1f}%")
             else:
                 detection_quality = 'excellent'
                 success_type = 'full'
-                logger.info(f"✓ 완전 성공 - {processing_time:.3f}초, 크기 감소 {size_reduction:.1f}%")
+                logger.info(f"완전 성공 - {processing_time:.3f}초, 크기 감소 {size_reduction:.1f}%")
             
             result = {
                 'filename': filename,
@@ -128,15 +128,13 @@ class VisualEvaluator:
                 'original_size': original_size,
                 'error': 'Cropping completely failed'
             }
-            logger.error(f"✗ 완전 실패 - {processing_time:.3f}초")
+            logger.error(f"완전 실패 - {processing_time:.3f}초")
         
         return result
     
     def evaluate_batch(self, image_paths: List[str]) -> Dict:
         """여러 이미지 일괄 평가"""
-        logger.info(f"\n{'='*60}")
         logger.info(f"성능 평가 시작: {len(image_paths)}개 이미지")
-        logger.info(f"{'='*60}\n")
         
         self.results = []
         
@@ -187,37 +185,35 @@ class VisualEvaluator:
     
     def print_summary(self, metrics: Dict):
         """결과 요약 출력"""
-        logger.info(f"\n{'='*60}")
-        logger.info("📊 성능 평가 결과")
-        logger.info(f"{'='*60}\n")
+        logger.info("성능 평가 결과")
         
-        logger.info(f"🔢 전체 통계:")
+        logger.info(f"전체 통계:")
         logger.info(f"  • 총 이미지 수: {metrics['total_images']}개")
-        logger.info(f"  • ✅ 완전 성공: {metrics['full_success']}개 (가이드 프레임 정확 검출)")
-        logger.info(f"  • ⚠️  주의사항: {metrics['partial_success']}개 (폴백 사용 - 중앙 크롭)")
-        logger.info(f"  • ❌ 실패: {metrics['failed']}개")
+        logger.info(f"  • 완전 성공: {metrics['full_success']}개 (가이드 프레임 정확 검출)")
+        logger.info(f"  • 주의사항: {metrics['partial_success']}개 (폴백 사용 - 중앙 크롭)")
+        logger.info(f"  • 실패: {metrics['failed']}개")
         logger.info(f"  • 완전 성공률: {metrics['full_success_rate']:.2f}%")
         logger.info(f"  • 전체 처리율: {metrics['total_success_rate']:.2f}%")
         
         if metrics['avg_processing_time'] is not None:
-            logger.info(f"⏱️  처리 시간:")
+            logger.info(f"처리 시간:")
             logger.info(f"  • 평균: {metrics['avg_processing_time']:.3f}초")
             logger.info(f"  • 최소: {metrics['min_processing_time']:.3f}초")
             logger.info(f"  • 최대: {metrics['max_processing_time']:.3f}초")
         
         if metrics['avg_size_reduction'] is not None:
-            logger.info(f"📐 크기 감소:")
+            logger.info(f"크기 감소:")
             logger.info(f"  • 평균 감소율: {metrics['avg_size_reduction']:.2f}%")
         
         if metrics['cropped_images_dir']:
-            logger.info(f"\n💾 크롭 이미지 저장:")
+            logger.info(f"\n크롭 이미지 저장:")
             logger.info(f"  • 위치: {metrics['cropped_images_dir']}")
             logger.info(f"  • 파일명 패턴: [원본파일명]_cropped.jpg")
         
         # 주의사항 케이스
         partial_cases = [r for r in metrics['detailed_results'] if r.get('success_type') == 'partial']
         if partial_cases:
-            logger.info(f"\n⚠️  주의사항 케이스 (폴백으로 처리됨):")
+            logger.info(f"\n주의사항 케이스 (폴백으로 처리됨):")
             for case in partial_cases:
                 logger.info(f"  • {case['filename']}")
                 logger.info(f"    - 원인: 흰색 가이드 프레임 검출 실패")
@@ -228,46 +224,45 @@ class VisualEvaluator:
         # 완전 실패 케이스
         failed_cases = [r for r in metrics['detailed_results'] if not r['success']]
         if failed_cases:
-            logger.info(f"\n❌ 완전 실패 케이스:")
+            logger.info(f"\n완전 실패 케이스:")
             for case in failed_cases:
                 logger.info(f"  • {case['filename']}: {case.get('error', 'Unknown error')}")
         
-        logger.info(f"\n{'='*60}\n")
     
-    def print_ppt_summary(self, metrics: Dict):
-        """PPT 발표용 요약"""
-        print("\n" + "="*70)
-        print("📊 PPT 중간발표용 핵심 지표")
-        print("="*70 + "\n")
+    # def print_ppt_summary(self, metrics: Dict):
+    #     """PPT 발표용 요약"""
+    #     print("\n" + "="*70)
+    #     print("📊 PPT 중간발표용 핵심 지표")
+    #     print("="*70 + "\n")
         
-        print("┌─────────────────────────────────────────────────────────────┐")
-        print("│  1️⃣  검출 성공률                                              │")
-        print(f"│     ✅ 완전 성공: {metrics['full_success_rate']:.1f}% ({metrics['full_success']}/{metrics['total_images']}개)                    │")
-        print(f"│     ⚠️  주의사항: {(metrics['partial_success']/metrics['total_images']*100):.1f}% ({metrics['partial_success']}개 - 폴백 처리)        │")
-        print(f"│     📊 전체 처리: {metrics['total_success_rate']:.1f}%                              │")
-        print("└─────────────────────────────────────────────────────────────┘\n")
+    #     print("┌─────────────────────────────────────────────────────────────┐")
+    #     print("│  1️⃣  검출 성공률                                              │")
+    #     print(f"│     ✅ 완전 성공: {metrics['full_success_rate']:.1f}% ({metrics['full_success']}/{metrics['total_images']}개)                    │")
+    #     print(f"│     ⚠️  주의사항: {(metrics['partial_success']/metrics['total_images']*100):.1f}% ({metrics['partial_success']}개 - 폴백 처리)        │")
+    #     print(f"│     📊 전체 처리: {metrics['total_success_rate']:.1f}%                              │")
+    #     print("└─────────────────────────────────────────────────────────────┘\n")
         
-        if metrics['avg_processing_time']:
-            print("┌─────────────────────────────────────────────────────────────┐")
-            print("│  2️⃣  처리 속도                                                │")
-            print(f"│     ⏱️  평균 {metrics['avg_processing_time']:.3f}초/이미지                         │")
-            print(f"│     📈 범위: {metrics['min_processing_time']:.3f}~{metrics['max_processing_time']:.3f}초                                  │")
-            print("└─────────────────────────────────────────────────────────────┘\n")
+    #     if metrics['avg_processing_time']:
+    #         print("┌─────────────────────────────────────────────────────────────┐")
+    #         print("│  2️⃣  처리 속도                                                │")
+    #         print(f"│     ⏱️  평균 {metrics['avg_processing_time']:.3f}초/이미지                         │")
+    #         print(f"│     📈 범위: {metrics['min_processing_time']:.3f}~{metrics['max_processing_time']:.3f}초                                  │")
+    #         print("└─────────────────────────────────────────────────────────────┘\n")
         
-        if metrics['avg_size_reduction']:
-            print("┌─────────────────────────────────────────────────────────────┐")
-            print("│  3️⃣  이미지 최적화                                            │")
-            print(f"│     📉 평균 {metrics['avg_size_reduction']:.1f}% 크기 감소                          │")
-            print("└─────────────────────────────────────────────────────────────┘\n")
+    #     if metrics['avg_size_reduction']:
+    #         print("┌─────────────────────────────────────────────────────────────┐")
+    #         print("│  3️⃣  이미지 최적화                                            │")
+    #         print(f"│     📉 평균 {metrics['avg_size_reduction']:.1f}% 크기 감소                          │")
+    #         print("└─────────────────────────────────────────────────────────────┘\n")
         
-        if metrics['cropped_images_dir']:
-            print("┌─────────────────────────────────────────────────────────────┐")
-            print("│  💡 시각적 확인                                               │")
-            print(f"│     크롭된 이미지 저장 위치:                                 │")
-            print(f"│     {metrics['cropped_images_dir']:55s}│")
-            print("└─────────────────────────────────────────────────────────────┘")
+    #     if metrics['cropped_images_dir']:
+    #         print("┌─────────────────────────────────────────────────────────────┐")
+    #         print("│  💡 시각적 확인                                               │")
+    #         print(f"│     크롭된 이미지 저장 위치:                                 │")
+    #         print(f"│     {metrics['cropped_images_dir']:55s}│")
+    #         print("└─────────────────────────────────────────────────────────────┘")
         
-        print("\n" + "="*70 + "\n")
+    #     print("\n" + "="*70 + "\n")
     
     def save_results(self, metrics: Dict, output_path: str = None):
         """결과 저장"""
@@ -281,7 +276,7 @@ class VisualEvaluator:
         with open(output_path, 'w', encoding='utf-8') as f:
             json.dump(metrics, f, ensure_ascii=False, indent=2)
         
-        logger.info(f"💾 결과 저장 완료: {output_path}")
+        logger.info(f"결과 저장 완료: {output_path}")
 
 
 def main():
