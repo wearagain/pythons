@@ -37,7 +37,7 @@ def main():
         logger.error("크롬 실패")
         return
     
-    logger.info(f"✓ 크롭 완료\n")
+    logger.info(f"크롭 완료\n")
     
     logger.info("[2단계] 결과 저장 중...")
 
@@ -45,7 +45,7 @@ def main():
     output_path = settings.CROPPED_DIR / output_filename
 
     if save_image(cropped_image, output_path):
-        logger.info(f"✓ 저장 완료")
+        logger.info(f"저장 완료")
         logger.info(f"  - 이미지: {output_path.name}")
         logger.info(f"  - 경로: {output_path}")
     else:
@@ -65,7 +65,7 @@ def main():
         cv2.waitKey(0)
         cv2.destroyAllWindows()
     
-    logger.info("✓ 처리 완료!")
+    logger.info("처리 완료!")
     logger.info(f"\n요약:")
     logger.info(f"  • 저장 위치: {settings.CROPPED_DIR}/")
     logger.info(f"  • 파일명: {output_filename}")

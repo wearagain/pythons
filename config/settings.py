@@ -20,6 +20,12 @@ class Settings:
     DETECTED_DIR = OUTPUT_DIR / "detected"
     LOGS_DIR = OUTPUT_DIR / "logs"
 
+    LLM_CONFIG: Dict[str, Any] = {
+    'model': os.getenv('GEMINI_MODEL', 'gemini-2.0-flash'),
+    'top_p': float(os.getenv('TOP_P', '0.95')),
+    'use_gpu': os.getenv('USE_GPU', 'False').lower() == 'true',
+}
+
     CROPPER_CONFIG: Dict[str, Any] = {
         'crop_ratio': float(os.getenv('CROP_RATIO', 0.85)),
         'ticket_aspect_ratio': float(os.getenv('TICKET_ASPECT_RATIO', 1.5)),

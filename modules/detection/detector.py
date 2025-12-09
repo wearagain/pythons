@@ -1,5 +1,5 @@
 """
-티켓 검출기 모듈 - 안정적 + 3점 추정 버전
+티켓 검출기 모듈
 
 OpenCV 기반 티켓 검출 및 추출     
 """
@@ -84,9 +84,9 @@ class TicketDetector:
                 ticket_img = self.transformer.transform(original, contour)
                 confidence = self._calculate_confidence(contour, img_area)
                 tickets.append((ticket_img, confidence))
-                logger.info(f"✓ 티켓 {i+1} 추출 완료 (신뢰도: {confidence:.2%})")
+                logger.info(f"티켓 {i+1} 추출 완료 (신뢰도: {confidence:.2%})")
             except Exception as e:
-                logger.warning(f"✗ 티켓 {i+1} 추출 실패: {e}")
+                logger.warning(f"티켓 {i+1} 추출 실패: {e}")
                 import traceback
                 logger.debug(traceback.format_exc())
                 continue
@@ -138,7 +138,7 @@ class TicketDetector:
     def _filter_and_deduplicate(self, contours: List[np.ndarray], img_shape: tuple) -> List[np.ndarray]:
         """
         필터링 및 중복 제거
-        ★ 4개 점 우선, 3개 점일 때만 조심스럽게 추정
+        4개 점 우선, 3개 점일 때만 조심스럽게 추정
         """
         img_h, img_w = img_shape[:2]
         img_area = img_h * img_w
@@ -156,31 +156,28 @@ class TicketDetector:
         for idx, contour in enumerate(contours[:15]):  # 상위 15개만 체크
             area = cv2.contourArea(contour)
             
-            logger.info(f"\n--- 윤곽선 #{idx} ---")
-            logger.info(f"  면적: {area:.0f} (범위: {'✓' if self.min_area < area < self.max_area else '✗'})")
+            logger.info(f"윤곽선 #{idx} ")
+            logger.info(f"  면적: {area:.0f} (범위: {'o' if self.min_area < area < self.max_area else 'x'})")
             
             # 1. 면적 체크
             if area < self.min_area or area > self.max_area:
-                logger.info(f"  ❌ 면적 제외")
+                logger.info(f"면적 제외")
                 continue
             
-            # ========================================
-            # ★★★ 핵심: 4개 점 우선, 3개일 때만 추정 ★★★
-            # ========================================
             peri = cv2.arcLength(contour, True)
             approx = None
             found_4_points = False
             
-            # 1단계: 4개 점 찾기 시도 (기존 로직)
+            # 4개 점 찾기 시도 
             for eps in [0.01, 0.015, 0.02, 0.025, 0.03, 0.035, 0.04, 0.05, 0.06]:
                 temp = cv2.approxPolyDP(contour, eps * peri, True)
                 if len(temp) == 4:
                     approx = temp
                     found_4_points = True
-                    logger.info(f"  ✓ 꼭지점 4개 찾음 (eps={eps})")
+                    logger.info(f"  꼭지점 4개 찾음 (eps={eps})")
                     break
             
-            # 2단계: 4개 못 찾았으면 3~5개 점으로 추정 시도
+            # 4개 못 찾았으면 3~5개 점으로 시도
             if not found_4_points:
                 logger.info(f"  ⚠️ 4개 점 못 찾음, 3~5개 점으로 추정 시도...")
                 
@@ -190,29 +187,29 @@ class TicketDetector:
                     temp = cv2.approxPolyDP(contour, eps * peri, True)
                     vertex_count = len(temp)
                     
-                    logger.info(f"    eps={eps}: {vertex_count}개 점")
+                    logger.info(f"eps={eps}: {vertex_count}개 점")
                     
                     # 3~5개 점이면 시도
                     if 3 <= vertex_count <= 5:
-                        logger.info(f"    📍 {vertex_count}개 점 발견! (eps={eps})")
+                        logger.info(f"{vertex_count}개 점 발견! (eps={eps})")
                         found_alternative = True
                         
                         # 면적 체크
                         temp_area = cv2.contourArea(temp)
-                        logger.info(f"    면적: {temp_area:.0f} (최소: {self.min_area * 0.5:.0f})")
+                        logger.info(f"면적: {temp_area:.0f} (최소: {self.min_area * 0.5:.0f})")
                         
                         if temp_area < self.min_area * 0.5:
-                            logger.info(f"    ❌ 면적 너무 작음")
+                            logger.info(f"면적 너무 작음")
                             continue
                         
                         # 점 좌표 출력
                         for i, pt in enumerate(temp):
-                            logger.info(f"      점{i}: ({pt[0][0]:.0f}, {pt[0][1]:.0f})")
+                            logger.info(f"점{i}: ({pt[0][0]:.0f}, {pt[0][1]:.0f})")
                         
                         # 4개면 그대로 사용, 3~5개면 3개 선택해서 추정
                         if vertex_count == 4:
                             approx = temp
-                            logger.info(f"    ✅ 4개 점 그대로 사용!")
+                            logger.info(f"4개 점 그대로 사용!")
                             break
                         elif vertex_count == 3:
                             estimated = self._estimate_fourth_point(temp, img_shape)
@@ -222,21 +219,18 @@ class TicketDetector:
                         
                         if estimated is not None:
                             approx = estimated
-                            logger.info(f"    ✅ 4번째 점 추정 성공!")
+                            logger.info(f"4번째 점 추정 성공!")
                             break
                         else:
-                            logger.info(f"    ❌ 추정 실패, 다음 eps 시도")
+                            logger.info(f"추정 실패, 다음 eps 시도")
                 
                 if not found_alternative:
-                    logger.info(f"  ❌ 3~5개 점도 찾지 못함")
+                    logger.info(f"3~5개 점도 찾지 못함")
             
             if approx is None or len(approx) != 4:
-                logger.info(f"  ❌ 유효한 4개 꼭짓점 없음")
+                logger.info(f"유효한 4개 꼭짓점 없음")
                 continue
             
-            # ========================================
-            # ★ 추정으로 만든 경우 테두리 체크 완화
-            # ========================================
             if not found_4_points and found_alternative:
                 # 추정으로 만든 경우는 테두리 체크 스킵
                 logger.info(f"  ⚙️ 추정으로 생성 → 테두리 체크 완화")
@@ -256,11 +250,8 @@ class TicketDetector:
                 logger.info(f"  위치: x={x}, y={y}, w={w}, h={h}")
                 logger.info(f"  테두리 근접: {'✗ (너무 가까움)' if too_close_to_edge else '✓'}")
                 
-                # ========================================
-                # ★★★ 핵심: 테두리 근접이면 3점으로 구출 시도! ★★★
-                # ========================================
                 if too_close_to_edge:
-                    logger.info(f"  ⚠️ 테두리 근접, 3개 안쪽 점으로 구출 시도...")
+                    logger.info(f"테두리 근접, 3개 안쪽 점으로 구출 시도...")
                     
                     # 4개 점 중 안쪽에 있는 3개 찾기
                     pts_4 = approx.reshape(4, 2)
@@ -282,20 +273,20 @@ class TicketDetector:
                         
                         if estimated is not None:
                             approx = estimated
-                            logger.info(f"  ✅ 테두리 근접 상황에서 구출 성공!")
-                            # 다시 테두리 체크 (추정된 점이 괜찮은지)
+                            logger.info(f"테두리 근접 상황에서 구출 성공!")
+                            # 다시 테두리 체크
                             x, y, w, h = cv2.boundingRect(approx)
-                            too_close_to_edge = False  # 통과!
+                            too_close_to_edge = False 
                         else:
-                            logger.info(f"  ❌ 구출 실패")
+                            logger.info(f"구출 실패")
                             continue
                     else:
-                        logger.info(f"  ❌ 안쪽 점 {len(inner_pts)}개로는 구출 불가 (3개 필요)")
+                        logger.info(f"안쪽 점 {len(inner_pts)}개로는 구출 불가 (3개 필요)")
                         continue
                 
                 # 테두리 근접 최종 체크
                 if too_close_to_edge:
-                    logger.info(f"  ❌ 이미지 테두리에 너무 가까움")
+                    logger.info(f"이미지 테두리에 너무 가까움")
                     continue
             
             # 3. 종횡비 체크 (양방향)
@@ -312,7 +303,7 @@ class TicketDetector:
             logger.info(f"  종횡비 범위: {'✓' if in_range else '✗'}")
             
             if not in_range:
-                logger.info(f"  ❌ 종횡비 제외 (태그는 0.3~0.8)")
+                logger.info(f"종횡비 제외 (태그는 0.3~0.8)")
                 continue
             
             # 4. 볼록도 체크
@@ -323,7 +314,7 @@ class TicketDetector:
             logger.info(f"  볼록도: {solidity:.2f}")
             
             if solidity < 0.6:
-                logger.info(f"  ❌ 볼록도 부족 (0.6 이상 필요)")
+                logger.info(f"볼록도 부족 (0.6 이상 필요)")
                 continue
             
             # 5. 밝기 체크
@@ -342,10 +333,10 @@ class TicketDetector:
                 logger.info(f"  밝기 기준 (원본): {min_brightness} 이상")
             
             if brightness < min_brightness:
-                logger.info(f"  ❌ 밝기 부족")
+                logger.info(f"밝기 부족")
                 continue
             
-            logger.info(f"  ✅ 후보 선정!")
+            logger.info(f"후보 선정!")
             candidates.append(approx)
         
         # 중복 제거
@@ -410,9 +401,9 @@ class TicketDetector:
         selected_indices = [tl_idx, br_idx, third_idx]
         three_pts = pts[selected_indices].reshape(3, 1, 2)
         
-        logger.info(f"    선택된 3개 점:")
+        logger.info(f"선택된 3개 점:")
         for i, idx in enumerate(selected_indices):
-            logger.info(f"      점{i} (원본#{idx}): ({pts[idx][0]:.0f}, {pts[idx][1]:.0f})")
+            logger.info(f"점{i} (원본#{idx}): ({pts[idx][0]:.0f}, {pts[idx][1]:.0f})")
         
         # 4번째 점 추정
         return self._estimate_fourth_point(three_pts, img_shape)
@@ -423,7 +414,7 @@ class TicketDetector:
         img_shape: tuple
     ) -> Optional[np.ndarray]:
         """
-        3개 점으로 4번째 점 추정 (보수적)
+        3개 점으로 4번째 점 추정
         
         원리: 평행사변형 대각선 중점이 같음
         TL + BR = TR + BL
@@ -431,8 +422,8 @@ class TicketDetector:
         pts = three_points.reshape(3, 2).astype(np.float32)
         img_h, img_w = img_shape[:2]
         
-        logger.info(f"    [4번째 점 추정 시작]")
-        logger.info(f"    입력 3점:")
+        logger.info(f"[4번째 점 추정 시작]")
+        logger.info(f"입력 3점:")
         for i, p in enumerate(pts):
             logger.info(f"      점{i}: ({p[0]:.0f}, {p[1]:.0f})")
         
@@ -469,7 +460,7 @@ class TicketDetector:
             margin = 50  # 50px까지 허용
             in_bounds = (-margin <= p3[0] < img_w + margin and -margin <= p3[1] < img_h + margin)
             
-            logger.info(f"        범위 체크: {'✓' if in_bounds else '✗'}")
+            logger.info(f"        범위 체크: {'o' if in_bounds else 'x'}")
             
             if not in_bounds:
                 continue
@@ -485,17 +476,17 @@ class TicketDetector:
             # 4개 점 생성
             four_pts = np.vstack([p0, p1, p2, p3_clipped.reshape(1, 2)])
             
-            # 기하학적 타당성 검증 (더 관대하게)
+            # 기하학적 타당성 검증 
             is_valid = self._is_valid_quadrilateral(four_pts, img_shape)
-            logger.info(f"        사각형 타당성: {'✓' if is_valid else '✗'}")
+            logger.info(f"        사각형 타당성: {'o' if is_valid else 'x'}")
             
             if not is_valid:
                 continue
             
-            # 종횡비 체크 (더 넓은 범위)
+            # 종횡비 체크 
             x, y, w, h = cv2.boundingRect(four_pts.astype(np.int32))
             if w == 0 or h == 0:
-                logger.info(f"        종횡비 체크: ✗ (w={w}, h={h})")
+                logger.info(f"종횡비 체크: x (w={w}, h={h})")
                 continue
                 
             ar = w / h
@@ -507,33 +498,33 @@ class TicketDetector:
             ar_ok = ((wider_range[0] <= ar <= wider_range[1]) or
                      (wider_range[0] <= ar_inv <= wider_range[1]))
             
-            logger.info(f"        종횡비: {ar:.2f} (역: {ar_inv:.2f}) {'✓' if ar_ok else '✗'}")
+            logger.info(f"종횡비: {ar:.2f} (역: {ar_inv:.2f}) {'o' if ar_ok else 'x'}")
             
             if ar_ok:
                 score = self._calculate_quadrilateral_score(four_pts, img_shape)
                 candidates.append((four_pts, score, case_name, p3_clipped))
-                logger.info(f"        점수: {score:.3f} ✓")
+                logger.info(f"점수: {score:.3f} ")
         
-        logger.info(f"    총 {len(candidates)}개 후보")
+        logger.info(f"총 {len(candidates)}개 후보")
         
         if not candidates:
-            logger.info(f"    ❌ 유효한 추정 불가")
+            logger.info(f"유효한 추정 불가")
             return None
         
         # 점수가 가장 높은 것 선택
         best_pts, best_score, best_case, best_p3 = max(candidates, key=lambda x: x[1])
-        logger.info(f"    ✓ 최종 선택: {best_case}, 추정점=({best_p3[0]:.0f},{best_p3[1]:.0f}), 점수={best_score:.3f}")
+        logger.info(f"최종 선택: {best_case}, 추정점=({best_p3[0]:.0f},{best_p3[1]:.0f}), 점수={best_score:.3f}")
         
         # 4개 점을 정렬해서 반환
         return best_pts.reshape(4, 1, 2).astype(np.int32)
     
     def _is_valid_quadrilateral(self, pts: np.ndarray, img_shape: tuple) -> bool:
-        """4개 점이 유효한 사각형인지 검증 (관대하게)"""
-        # 모든 점이 서로 충분히 떨어져 있는지 (5px 이상)
+        """4개 점이 유효한 사각형인지 검증"""
+        # 모든 점이 서로 충분히 떨어져 있는지
         for i in range(len(pts)):
             for j in range(i+1, len(pts)):
                 dist = np.linalg.norm(pts[i] - pts[j])
-                if dist < 5:  # 너무 가깝지만 않으면 OK
+                if dist < 5:  
                     return False
         
         # 볼록 사각형인지
@@ -544,7 +535,7 @@ class TicketDetector:
         return True
     
     def _calculate_quadrilateral_score(self, pts: np.ndarray, img_shape: tuple) -> float:
-        """사각형 품질 점수 (높을수록 좋음)"""
+        """사각형 품질 점수"""
         # 1. 면적 비율 점수
         area = cv2.contourArea(pts.astype(np.int32))
         img_area = img_shape[0] * img_shape[1]
