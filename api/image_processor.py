@@ -47,12 +47,12 @@ class ImageProcessor:
                     aws_secret_access_key=self.aws_secret_key,
                     region_name=self.region
                 )
-                logger.info(f"✓ S3 클라이언트 초기화 완료 (bucket: {self.bucket_name})")
+                logger.info(f"S3 클라이언트 초기화 완료 (bucket: {self.bucket_name})")
             except Exception as e:
                 logger.error(f"S3 클라이언트 초기화 실패: {e}")
                 self.s3_client = None
         else:
-            logger.warning("AWS 자격증명이 설정되지 않았습니다. 로컬 저장만 사용됩니다.")
+            logger.warning("AWS 자격증명이 설정되지 않았습니다. 로컬 저장")
             self.s3_client = None
         
         logger.info("ImageProcessor 초기화 완료")
@@ -105,7 +105,7 @@ class ImageProcessor:
             # 파일명 생성
             if filename is None:
                 timestamp = datetime.now().strftime('%Y%m%d_%H%M%S_%f')
-                filename = f"cropped_{timestamp}.jpg"
+                filename = f"{timestamp}.jpg"
             
             # S3 키 생성
             s3_key = f"{folder}/{filename}"

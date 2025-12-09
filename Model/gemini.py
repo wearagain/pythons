@@ -46,7 +46,7 @@ class GeminiClient:
             )
         
         # 모델 설정
-        self.model_name = settings.LLM_CONFIG.get('model', 'gemini-2.0-flash')
+        self.model_name = settings.LLM_CONFIG.get('model', 'gemini-2.5-flash')
         
         
         if use_rag:
@@ -243,7 +243,7 @@ class GeminiClient:
                 self._init_rag()
             
             doc_count = len(self.vector_db.get()['ids'])
-            logger.info(f"✓ 문서 추가 완료 (총 {doc_count}개 청크)")
+            logger.info(f"문서 추가 완료 (총 {doc_count}개 청크)")
             
         except Exception as e:
             logger.error(f"문서 추가 실패: {e}")
@@ -268,7 +268,7 @@ class GeminiClient:
                 self._init_rag()
             
             doc_count = len(self.vector_db.get()['ids'])
-            logger.info(f"✓ 문서 추가 완료 (총 {doc_count}개)")
+            logger.info(f"문서 추가 완료 (총 {doc_count}개)")
             
         except Exception as e:
             logger.error(f"문서 추가 실패: {e}")

@@ -53,9 +53,6 @@ class ImpactRequest(BaseModel):
 
 class ImpactResponse(BaseModel):
     """환경 임팩트 응답"""
-    code: str = Field(..., description="카테고리 코드")
-    main_category: str = Field(..., description="대분류")
-    sub_category: str = Field(..., description="소분류")
     co2_kg: float = Field(..., description="CO2 절감량 (kg)")
     water_m3: float = Field(..., description="물 절약량 (m³)")
     energy_mj: float = Field(..., description="에너지 절감량 (MJ)")
@@ -123,8 +120,8 @@ async def root():
             },
             "이미지 크롭": {
                 "POST /api/crop/auto": "이미지 URL만 → 자동 흰색 틀 검출 → S3 저장",
-                "POST /api/crop/manual": "이미지 URL + 꼭지점 좌표 → 크롭 → S3 저장 [메인]",
-                "GET /api/crop/manual": "GET 방식 수동 크롭 [테스트용]"
+                "POST /api/crop/passive": "이미지 URL + 꼭지점 좌표 → 크롭 → S3 저장 [메인]",
+                "GET /api/crop/passive": "GET 방식 수동 크롭 [테스트용]"
             }
         }
     }
@@ -237,7 +234,6 @@ async def crop_passive_post(request: CropPassiveRequest):
     logger.info(f"  - Corners: {request.corners}")
     
     try:
-        # ImageProcessor.process_and_upload_manual() 사용
         s3_url = image_processor.process_and_upload_passive(
             image_url=request.image_url,
             corners=request.corners,
@@ -278,13 +274,13 @@ async def crop_passive_post(request: CropPassiveRequest):
         )
 
 
-@app.get("/api/crop/manual", response_model=CropResponse)
-async def crop_manual_get(
+@app.get("/api/crop/passive", response_model=CropResponse)
+async def crop_passive_get(
     image_url: str = Query(..., description="원본 이미지 URL"),
     corners: str = Query(..., description="4개 꼭지점 JSON string")
 ):
     """이미지 수동 크롭 (GET) - 테스트용"""
-    logger.info(f"[GET /api/crop/manual] 테스트 요청")
+    logger.info(f"[GET /api/crop/passive] 테스트 요청")
     
     try:
         corners_list = json.loads(corners)
@@ -326,5 +322,5 @@ if __name__ == "__main__":
         "api.main:app",
         host="0.0.0.0",
         port=8000,
-        reload=True  
+        reload=True
     )
