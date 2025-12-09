@@ -78,7 +78,7 @@ class CropAutoRequest(BaseModel):
 
 
 # 이미지 크롭 - 수동 지정
-class CropManualRequest(BaseModel):
+class CropPassiveRequest(BaseModel):
     """이미지 수동 크롭 요청"""
     model_config = ConfigDict(
         json_schema_extra={
@@ -225,22 +225,22 @@ async def crop_auto(request: CropAutoRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@app.post("/api/crop/manual", response_model=CropResponse)
-async def crop_manual_post(request: CropManualRequest):
+@app.post("/api/crop/passive", response_model=CropResponse)
+async def crop_passive_post(request: CropPassiveRequest):
     """
     이미지 수동 크롭 (POST)
     
     백엔드가 이미지 URL과 4개 꼭지점 좌표를 보내면 크롭 후 S3에 저장합니다.
     """
-    logger.info(f"[POST /api/crop/manual] 수동 크롭 요청")
+    logger.info(f"[POST /api/crop/passive] 수동 크롭 요청")
     logger.info(f"  - URL: {request.image_url}")
     logger.info(f"  - Corners: {request.corners}")
     
     try:
-        # TODO: crop_with_corners 구현 필요
-        logger.warning("crop_with_corners 미구현 - 자동 크롭으로 대체")
-        s3_url = image_processor.process_and_upload(
+        # ImageProcessor.process_and_upload_manual() 사용
+        s3_url = image_processor.process_and_upload_passive(
             image_url=request.image_url,
+            corners=request.corners,
             filename=request.filename
         )
         
@@ -248,10 +248,10 @@ async def crop_manual_post(request: CropManualRequest):
             return CropResponse(
                 success=False,
                 s3_url=None,
-                message="이미지 처리 실패"
+                message="수동 크롭 실패 (다운로드/크롭/업로드 오류)"
             )
         
-        logger.info(f"수동 크롭 완료: {s3_url}")
+        logger.info(f"✓ 수동 크롭 완료: {s3_url}")
         
         return CropResponse(
             success=True,
@@ -259,9 +259,23 @@ async def crop_manual_post(request: CropManualRequest):
             message="수동 크롭 완료"
         )
         
+    except ValueError as e:
+        # 좌표 형식 오류
+        logger.error(f"좌표 형식 오류: {e}")
+        raise HTTPException(
+            status_code=400,
+            detail=f"좌표 형식이 잘못되었습니다: {str(e)}"
+        )
+        
     except Exception as e:
+        # 기타 오류
         logger.error(f"수동 크롭 실패: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(
+            status_code=500,
+            detail=f"서버 오류: {str(e)}"
+        )
 
 
 @app.get("/api/crop/manual", response_model=CropResponse)
@@ -274,11 +288,11 @@ async def crop_manual_get(
     
     try:
         corners_list = json.loads(corners)
-        request = CropManualRequest(
+        request = CropPassiveRequest(
             image_url=image_url,
             corners=corners_list
         )
-        return await crop_manual_post(request)
+        return await crop_passive_post(request)
     except json.JSONDecodeError:
         raise HTTPException(
             status_code=400,

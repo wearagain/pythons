@@ -4,7 +4,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from Model.gemini import GeminiClient
-from Model.prompt import PromptManager
+from .prompt import PromptManager
 from config import get_logger
 
 logger = get_logger(__name__)
