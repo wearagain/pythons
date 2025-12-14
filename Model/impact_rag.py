@@ -93,8 +93,8 @@ class ImpactRAGImproved:
         # 청크 분할
         if documents:
             splitter = RecursiveCharacterTextSplitter(
-                chunk_size=1000,
-                chunk_overlap=200
+                chunk_size=500,
+                chunk_overlap=50
             )
             documents = splitter.split_documents(documents)
         

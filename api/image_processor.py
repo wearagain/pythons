@@ -36,7 +36,7 @@ class ImageProcessor:
         self.aws_access_key = os.getenv('AWS_ACCESS_KEY_ID')
         self.aws_secret_key = os.getenv('AWS_SECRET_ACCESS_KEY')
         self.region = os.getenv('AWS_REGION', 'ap-northeast-2')
-        self.bucket_name = os.getenv('AWS_S3_BUCKET')
+        self.bucket_name = os.getenv('AWS_S3_BUCKET_NAME')
         
         # S3 클라이언트 초기화
         if self.aws_access_key and self.aws_secret_key and self.bucket_name:
