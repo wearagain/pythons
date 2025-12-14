@@ -46,7 +46,7 @@ class GeminiClient:
             )
         
         # 모델 설정
-        self.model_name = settings.LLM_CONFIG.get('model', 'gemini-2.5-flash')
+        self.model_name = settings.LLM_CONFIG.get('model', 'gemini-2.0-flash')
         
         
         if use_rag:
